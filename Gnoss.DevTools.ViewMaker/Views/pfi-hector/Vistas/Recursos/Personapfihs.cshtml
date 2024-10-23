@@ -1,0 +1,88 @@
+@using PersonapfihsOntology;
+@using TaxonomypfihsOntology;
+@using ClubpfihsOntology;
+@using GnossBase;
+@model ResourceViewModel
+
+@{
+	ResourceModel FichaDocumento = Model.Resource;
+	CommunityModel Comunidad = Html.GetComunidad();
+	UserIdentityModel IdentidadActual = Html.GetIdentidadActual();
+	Html.AddBodyClass("PersonModel");
+
+	SemanticResourceModel semCmsModel = Model.SemanticFrom;
+	GnossOCBase.LanguageEnum idiomaUsuario = (GnossOCBase.LanguageEnum)Enum.Parse(typeof(GnossOCBase.LanguageEnum), Html.GetUtilIdiomas().LanguageCode.ToLower());
+	Person pPerson = new Person(semCmsModel, idiomaUsuario);
+}
+
+<!-- Contenedor principal con Bootstrap -->
+<div class="container mt-4">
+	<div class="row">
+		<div class="col-lg-4">
+			<!-- Imagen del jugador -->
+			@if (pPerson.Schema_image != null && pPerson.Schema_image.Count > 0)
+			{
+				<div class="card shadow-sm mb-3" style="border: 2px solid #FFD700;">
+					<img src="@pPerson.Schema_image[0]" class="card-img-top" alt="@pPerson.Schema_name" />
+				</div>
+			}
+		</div>
+
+		<div class="col-lg-8">
+			<!-- Información del jugador -->
+			<div class="card shadow-sm mb-3" style="border: 2px solid #FFD700;">
+				<div class="card-body">
+					<h3 class="card-title" style="color: #FFD700;">@pPerson.Schema_name</h3>
+					<p class="card-text">
+						@if (pPerson.Schema_birthDate != null)
+						{
+							<strong>Fecha de nacimiento: @pPerson.Schema_birthDate?.ToString("dd/MM/yyyy") </strong>
+
+							<br />
+						}
+						@if (pPerson.Schema_height != null)
+						{
+							<strong>Altura:</strong> @pPerson.Schema_height <p>cm </p><br />
+						}
+						@if (pPerson.Eschema_foot != null)
+						{
+							<strong>Pierna dominante:</strong> @pPerson.Eschema_foot
+
+							<br />
+						}
+					</p>
+					<h5>Descripción</h5>
+					<p class="card-text">@pPerson.Schema_description</p>
+				</div>
+			</div>
+
+			<!-- Información del club -->
+			@if (pPerson.Eschema_i_club != null && pPerson.Eschema_i_club.Any())
+			{
+				<div class="card shadow-sm mb-3" style="border: 2px solid #FFD700;">
+					<div class="card-body">
+						<h4 style="color: #FFD700;">Clubes</h4>
+						@foreach (var club in pPerson.Eschema_i_club)
+						{
+							<p><strong>Club:</strong> @club.Schema_name</p>
+						}
+					</div>
+				</div>
+			}
+
+			<!-- Nacionalidad -->
+			@if (pPerson.Schema_nationality != null && pPerson.Schema_nationality.Any())
+			{
+				<div class="card shadow-sm mb-3" style="border: 2px solid #FFD700;">
+					<div class="card-body">
+						<h4 style="color: #FFD700;">Nacionalidad</h4>
+						@foreach (var nationality in pPerson.Schema_nationality)
+						{
+							<p><strong>País:</strong> @pPerson.Schema_name</p>
+						}
+					</div>
+				</div>
+			}
+		</div>
+	</div>
+</div>
