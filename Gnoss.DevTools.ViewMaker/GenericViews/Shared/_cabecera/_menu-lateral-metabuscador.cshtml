@@ -1,0 +1,63 @@
+﻿@using Es.Riam.Gnoss.Web.MVC.Models;
+@if (Html.GetComunidad() != null)
+{
+@*
+Descripción
+-----------------------------------------------
+Menú lateral derecho que aparecerá al pulsar sobre la "Lupa" de la la sección "Header".
+Este panel se deslizará de derecha a izquierda para realizar búsquedas de metadatos en la web.
+@*
+
+Variables
+----------------------------------------------------------------
+*@
+CommunityModel Comunidad = Html.GetComunidad();
+@*
+----------------------------------------------------------------
+--------------------Menú Lateral Metabuscador --------------------
+*@
+
+<aside id="menuLateralMetabuscador" class="menuLateral metabuscador">
+    <div class="header">
+        <div class="wrap-header">
+            <div id="buscador" class="buscador">
+                <form method="post" id="formBuscador">
+                    <div class="fieldsetGroup searchGroup">
+                        <div class="textoBusquedaPrincipalInput">
+                            <input type="text" id="txtBusquedaPrincipal" class="not-outline text txtBusqueda autocompletar personalizado ac_input" placeholder="@Html.GetText("COMMON","BUSCAR")" autocomplete="off">
+                            <span class="botonSearch">
+                                <span class="material-icons">search</span>
+                            </span>
+                        </div>
+                    </div>
+                    <input type="submit" style="display: none;" id="enviarFormBuscador" value="@Html.GetText("COMMON","ENVIAR")" title="@Html.GetText("COMMON","ENVIAR")">
+                </form>
+            </div>
+        </div>
+        <span class="material-icons cerrar">close</span>
+    </div>
+    <div class="body custom-css-scroll">
+        <div class="resultados" id="resultadosMetabuscador">
+            <ul id="listaMetabuscadorResultados">
+               
+            </ul>
+        </div>
+        <div class="sugerencias" id="sugerenciasMetabuscador">
+            <ul class="nav pmd-sidebar-nav">
+                <li>
+                    <p class="title">@Html.GetText("METABUSCADOR", "ULTIMASBUSQUEDAS")</p>
+                </li>
+            </ul>
+            <ul id="sugerenciasMetabuscadorItems">
+            </ul>
+        </div>        
+        <div class="cargadores" id="sugerenciasMetabuscador">
+        </div>
+
+        @* Panel informativo de que no se ha encontrado nada *@
+        <div class="sinresultadosMetabuscador d-none" id="sinResultadosMetabuscador">
+        </div>
+    </div>
+</aside>
+
+}
