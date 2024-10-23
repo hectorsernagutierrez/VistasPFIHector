@@ -351,7 +351,4 @@ MigrationBackup/
 .ionide/
 App_Data
 
-#No subir las vistas personalizadas de los proyectos
-Gnoss.DevTools.ViewMaker/Views/*
-!Gnoss.DevTools.ViewMaker/Views/_ViewImports.cshtml
-!Gnoss.DevTools.ViewMaker/Views/_ViewStart.cshtml
+
