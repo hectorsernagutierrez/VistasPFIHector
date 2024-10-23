@@ -1,19 +1,34 @@
-@using PersonapfihsOntology;
-@using TaxonomypfihsOntology;
-@using ClubpfihsOntology;
-@using GnossBase;
+ï»¿@*[security|||personapfihs|||pfi-hector]*@
+@using System.Data;
+@using System.Reflection;
+@using System.Drawing;
+@using System.Text;
+@using System.Text.RegularExpressions;
+@using System.Collections.Generic;
+@using System;
+@using System.ComponentModel.DataAnnotations;
+@using System;
+@using System.Globalization;
 @model ResourceViewModel
-
 @{
 	ResourceModel FichaDocumento = Model.Resource;
 	CommunityModel Comunidad = Html.GetComunidad();
 	UserIdentityModel IdentidadActual = Html.GetIdentidadActual();
-	Html.AddBodyClass("PersonModel");
-
+	Html.AddBodyClass(" PersonModel ");
+	if (FichaDocumento.ItemLinkedFotoVersion != 0 && !string.IsNullOrEmpty(FichaDocumento.ItemLinked.ToString()) && FichaDocumento.ItemLinked != Guid.Empty)
+	{
+		string urlPersonalizacion = $"{Html.GetBaseUrlContent()}/{Es.Riam.Util.UtilArchivos.ContentOntologias}/Archivos/{FichaDocumento.ItemLinked.ToString().Substring(0, 3)}";
+		Html.GetListaJS().Add($"{urlPersonalizacion}/{FichaDocumento.ItemLinked.ToString()}.js?v= {FichaDocumento.ItemLinkedFotoVersion}");
+		Html.GetListaCSS().Add($"{urlPersonalizacion}/{FichaDocumento.ItemLinked.ToString()}.css?v= {FichaDocumento.ItemLinkedFotoVersion}");
+	}
 	SemanticResourceModel semCmsModel = Model.SemanticFrom;
 	GnossOCBase.LanguageEnum idiomaUsuario = (GnossOCBase.LanguageEnum)Enum.Parse(typeof(GnossOCBase.LanguageEnum), Html.GetUtilIdiomas().LanguageCode.ToLower());
 	Person pPerson = new Person(semCmsModel, idiomaUsuario);
 }
+
+<div>
+	<p>@pPerson.Schema_name</p>
+</div>
 
 <!-- Contenedor principal con Bootstrap -->
 <div class="container mt-4">
@@ -29,7 +44,7 @@
 		</div>
 
 		<div class="col-lg-8">
-			<!-- Información del jugador -->
+			<!-- InformaciÃ³n del jugador -->
 			<div class="card shadow-sm mb-3" style="border: 2px solid #FFD700;">
 				<div class="card-body">
 					<h3 class="card-title" style="color: #FFD700;">@pPerson.Schema_name</h3>
@@ -42,47 +57,1084 @@
 						}
 						@if (pPerson.Schema_height != null)
 						{
-							<strong>Altura:</strong> @pPerson.Schema_height <p>cm </p><br />
-						}
-						@if (pPerson.Eschema_foot != null)
-						{
-							<strong>Pierna dominante:</strong> @pPerson.Eschema_foot
+							<strong>Altura:</strong> @pPerson.Schema_height
+						<p>cm </p>
 
 							<br />
 						}
+						@if (pPerson.Eschema_foot != null)
+						{
+						<strong>Pierna dominante:</strong> @pPerson.Eschema_foot
+
+						<br />
+						}
 					</p>
-					<h5>Descripción</h5>
+					<h5>DescripciÃ³n</h5>
 					<p class="card-text">@pPerson.Schema_description</p>
 				</div>
 			</div>
-
-			<!-- Información del club -->
-			@if (pPerson.Eschema_i_club != null && pPerson.Eschema_i_club.Any())
-			{
-				<div class="card shadow-sm mb-3" style="border: 2px solid #FFD700;">
-					<div class="card-body">
-						<h4 style="color: #FFD700;">Clubes</h4>
-						@foreach (var club in pPerson.Eschema_i_club)
-						{
-							<p><strong>Club:</strong> @club.Schema_name</p>
-						}
-					</div>
-				</div>
-			}
-
-			<!-- Nacionalidad -->
-			@if (pPerson.Schema_nationality != null && pPerson.Schema_nationality.Any())
-			{
-				<div class="card shadow-sm mb-3" style="border: 2px solid #FFD700;">
-					<div class="card-body">
-						<h4 style="color: #FFD700;">Nacionalidad</h4>
-						@foreach (var nationality in pPerson.Schema_nationality)
-						{
-							<p><strong>País:</strong> @pPerson.Schema_name</p>
-						}
-					</div>
-				</div>
-			}
+			
 		</div>
 	</div>
 </div>
+
+
+
+@functions {
+	public class Person : GnossOCBase
+	{
+		public Person() : base() { }
+
+		public Person(SemanticResourceModel pSemCmsModel, LanguageEnum idiomaUsuario) : base()
+		{
+			GNOSSID = pSemCmsModel.RootEntities[0].Entity.Uri;
+			Schema_networth = new List<PriceSpecification>();
+			SemanticPropertyModel propSchema_networth = pSemCmsModel.GetPropertyByPath("https://schema.org/networth");
+			if (propSchema_networth != null && propSchema_networth.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_networth.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						PriceSpecification schema_networth = new PriceSpecification(propValue.RelatedEntity, idiomaUsuario);
+						Schema_networth.Add(schema_networth);
+					}
+				}
+			}
+			Schema_nationality = new List<NationalityPath>();
+			SemanticPropertyModel propSchema_nationality = pSemCmsModel.GetPropertyByPath("https://schema.org/nationality");
+			if (propSchema_nationality != null && propSchema_nationality.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_nationality.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						NationalityPath schema_nationality = new NationalityPath(propValue.RelatedEntity, idiomaUsuario);
+						Schema_nationality.Add(schema_nationality);
+					}
+				}
+			}
+			Eschema_i_club = new List<SportsClub>();
+			SemanticPropertyModel propEschema_i_club = pSemCmsModel.GetPropertyByPath("https://schema.org/extended/i_club");
+			if (propEschema_i_club != null && propEschema_i_club.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propEschema_i_club.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						SportsClub eschema_i_club = new SportsClub(propValue.RelatedEntity, idiomaUsuario);
+						Eschema_i_club.Add(eschema_i_club);
+					}
+				}
+			}
+			SemanticPropertyModel propSchema_birthPlace = pSemCmsModel.GetPropertyByPath("https://schema.org/birthPlace");
+			if (propSchema_birthPlace != null && propSchema_birthPlace.PropertyValues.Count > 0 && propSchema_birthPlace.PropertyValues[0].RelatedEntity != null)
+			{
+				Schema_birthPlace = new PostalAddress(propSchema_birthPlace.PropertyValues[0].RelatedEntity, idiomaUsuario);
+			}
+			this.Schema_identifier = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/identifier"));
+			this.Eschema_foot = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/extended/foot"));
+			SemanticPropertyModel propSchema_award = pSemCmsModel.GetPropertyByPath("https://schema.org/award");
+			this.Schema_award = new List<string>();
+			if (propSchema_award != null && propSchema_award.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_award.PropertyValues)
+				{
+					this.Schema_award.Add(propValue.Value);
+				}
+			}
+			this.Schema_height = GetNumberIntPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/height"));
+			this.Schema_description = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/description"));
+			this.Schema_birthDate = GetDateValuePropertySemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/birthDate"));
+			SemanticPropertyModel propSchema_image = pSemCmsModel.GetPropertyByPath("https://schema.org/image");
+			this.Schema_image = new List<string>();
+			if (propSchema_image != null && propSchema_image.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_image.PropertyValues)
+				{
+					this.Schema_image.Add(propValue.Value);
+				}
+			}
+			this.Schema_name = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/name"));
+		}
+
+		public Person(SemanticEntityModel pSemCmsModel, LanguageEnum idiomaUsuario) : base()
+		{
+			mGNOSSID = pSemCmsModel.Entity.Uri;
+			mURL = pSemCmsModel.Properties.FirstOrDefault(p => p.PropertyValues.Any(prop => prop.DownloadUrl != null))?.FirstPropertyValue.DownloadUrl;
+			Schema_networth = new List<PriceSpecification>();
+			SemanticPropertyModel propSchema_networth = pSemCmsModel.GetPropertyByPath("https://schema.org/networth");
+			if (propSchema_networth != null && propSchema_networth.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_networth.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						PriceSpecification schema_networth = new PriceSpecification(propValue.RelatedEntity, idiomaUsuario);
+						Schema_networth.Add(schema_networth);
+					}
+				}
+			}
+			Schema_nationality = new List<NationalityPath>();
+			SemanticPropertyModel propSchema_nationality = pSemCmsModel.GetPropertyByPath("https://schema.org/nationality");
+			if (propSchema_nationality != null && propSchema_nationality.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_nationality.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						NationalityPath schema_nationality = new NationalityPath(propValue.RelatedEntity, idiomaUsuario);
+						Schema_nationality.Add(schema_nationality);
+					}
+				}
+			}
+			Eschema_i_club = new List<SportsClub>();
+			SemanticPropertyModel propEschema_i_club = pSemCmsModel.GetPropertyByPath("https://schema.org/extended/i_club");
+			if (propEschema_i_club != null && propEschema_i_club.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propEschema_i_club.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						SportsClub eschema_i_club = new SportsClub(propValue.RelatedEntity, idiomaUsuario);
+						Eschema_i_club.Add(eschema_i_club);
+					}
+				}
+			}
+			SemanticPropertyModel propSchema_birthPlace = pSemCmsModel.GetPropertyByPath("https://schema.org/birthPlace");
+			if (propSchema_birthPlace != null && propSchema_birthPlace.PropertyValues.Count > 0 && propSchema_birthPlace.PropertyValues[0].RelatedEntity != null)
+			{
+				Schema_birthPlace = new PostalAddress(propSchema_birthPlace.PropertyValues[0].RelatedEntity, idiomaUsuario);
+			}
+			this.Schema_identifier = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/identifier"));
+			this.Eschema_foot = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/extended/foot"));
+			SemanticPropertyModel propSchema_award = pSemCmsModel.GetPropertyByPath("https://schema.org/award");
+			this.Schema_award = new List<string>();
+			if (propSchema_award != null && propSchema_award.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_award.PropertyValues)
+				{
+					this.Schema_award.Add(propValue.Value);
+				}
+			}
+			this.Schema_height = GetNumberIntPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/height"));
+			this.Schema_description = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/description"));
+			this.Schema_birthDate = GetDateValuePropertySemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/birthDate"));
+			SemanticPropertyModel propSchema_image = pSemCmsModel.GetPropertyByPath("https://schema.org/image");
+			this.Schema_image = new List<string>();
+			if (propSchema_image != null && propSchema_image.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_image.PropertyValues)
+				{
+					this.Schema_image.Add(propValue.Value);
+				}
+			}
+			this.Schema_name = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/name"));
+		}
+
+		public virtual string RdfType { get { return "https://schema.org/Person"; } }
+		public virtual string RdfsLabel { get { return "https://schema.org/Person"; } }
+		[LABEL(LanguageEnum.es, "Historial Valores Mercado")]
+		[LABEL(LanguageEnum.en, "Historical Market Values")]
+		[RDFProperty("https://schema.org/networth")]
+		public List<PriceSpecification> Schema_networth { get; set; }
+
+		[LABEL(LanguageEnum.en, "Nationality")]
+		[LABEL(LanguageEnum.es, "Nacionalidad")]
+		[RDFProperty("https://schema.org/nationality")]
+		public List<NationalityPath> Schema_nationality { get; set; }
+
+		[LABEL(LanguageEnum.es, "Club")]
+		[LABEL(LanguageEnum.en, "Club")]
+		[RDFProperty("https://schema.org/extended/i_club")]
+		public List<SportsClub> Eschema_i_club { get; set; }
+		public List<string> IdsEschema_i_club { get; set; }
+
+		[LABEL(LanguageEnum.es, "Lugar de Nacimiento")]
+		[LABEL(LanguageEnum.en, "Place of birth")]
+		[RDFProperty("https://schema.org/birthPlace")]
+		public PostalAddress Schema_birthPlace { get; set; }
+
+		[LABEL(LanguageEnum.es, "Id")]
+		[RDFProperty("https://schema.org/identifier")]
+		public string Schema_identifier { get; set; }
+
+		[LABEL(LanguageEnum.es, "Pie habil")]
+		[LABEL(LanguageEnum.en, "Preferred foot")]
+		[RDFProperty("https://schema.org/extended/foot")]
+		public string Eschema_foot { get; set; }
+
+		[LABEL(LanguageEnum.es, "Premios")]
+		[LABEL(LanguageEnum.en, "Awards")]
+		[RDFProperty("https://schema.org/award")]
+		public List<string> Schema_award { get; set; }
+
+		[LABEL(LanguageEnum.es, "Altura")]
+		[LABEL(LanguageEnum.en, "Height")]
+		[RDFProperty("https://schema.org/height")]
+		public int? Schema_height { get; set; }
+
+		[LABEL(LanguageEnum.es, "Descripciï¿½n")]
+		[LABEL(LanguageEnum.en, "Description")]
+		[RDFProperty("https://schema.org/description")]
+		public string Schema_description { get; set; }
+
+		[LABEL(LanguageEnum.es, "Fecha Nacimiento")]
+		[LABEL(LanguageEnum.en, "Birth Date")]
+		[RDFProperty("https://schema.org/birthDate")]
+		public DateTime? Schema_birthDate { get; set; }
+
+		[LABEL(LanguageEnum.es, "Image")]
+		[RDFProperty("https://schema.org/image")]
+		public List<string> Schema_image { get; set; }
+
+		[LABEL(LanguageEnum.en, "Name")]
+		[LABEL(LanguageEnum.es, "Nombre")]
+		[RDFProperty("https://schema.org/name")]
+		public string Schema_name { get; set; }
+	}
+
+	public class NationalityPath : GnossOCBase
+	{
+		public NationalityPath() : base() { }
+
+		public NationalityPath(SemanticEntityModel pSemCmsModel, LanguageEnum idiomaUsuario) : base()
+		{
+			mGNOSSID = pSemCmsModel.Entity.Uri;
+			mURL = pSemCmsModel.Properties.FirstOrDefault(p => p.PropertyValues.Any(prop => prop.DownloadUrl != null))?.FirstPropertyValue.DownloadUrl;
+			Gnossg_countryBirthNode = new List<Concept>();
+			SemanticPropertyModel propGnossg_countryBirthNode = pSemCmsModel.GetPropertyByPath("http://gnossg.gnoss.com/countryBirthNode");
+			if (propGnossg_countryBirthNode != null && propGnossg_countryBirthNode.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propGnossg_countryBirthNode.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						Concept gnossg_countryBirthNode = new Concept(propValue.RelatedEntity, idiomaUsuario);
+						Gnossg_countryBirthNode.Add(gnossg_countryBirthNode);
+					}
+				}
+			}
+		}
+
+		public virtual string RdfType { get { return "http://gnossg.gnoss.com/NationalityPath"; } }
+		public virtual string RdfsLabel { get { return "http://gnossg.gnoss.com/NationalityPath"; } }
+
+		[LABEL(LanguageEnum.es, "")]
+		[RDFProperty("http://gnossg.gnoss.com/countryBirthNode")]
+		public List<Concept> Gnossg_countryBirthNode { get; set; }
+		public List<string> IdsGnossg_countryBirthNode { get; set; }
+	}
+
+	public class PostalAddress : GnossOCBase
+	{
+		public PostalAddress() : base() { }
+
+		public PostalAddress(SemanticEntityModel pSemCmsModel, LanguageEnum idiomaUsuario) : base()
+		{
+			mGNOSSID = pSemCmsModel.Entity.Uri;
+			mURL = pSemCmsModel.Properties.FirstOrDefault(p => p.PropertyValues.Any(prop => prop.DownloadUrl != null))?.FirstPropertyValue.DownloadUrl;
+			this.Schema_addressLocality = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/addressLocality"));
+			this.Schema_addressCountry = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/addressCountry"));
+		}
+
+		public virtual string RdfType { get { return "https://schema.org/PostalAddress"; } }
+		public virtual string RdfsLabel { get { return "https://schema.org/PostalAddress"; } }
+
+		[LABEL(LanguageEnum.en, "City")]
+		[LABEL(LanguageEnum.es, "Ciudad")]
+		[RDFProperty("https://schema.org/addressLocality")]
+		public string Schema_addressLocality { get; set; }
+
+		[LABEL(LanguageEnum.es, "Pais")]
+		[LABEL(LanguageEnum.en, "Country")]
+		[RDFProperty("https://schema.org/addressCountry")]
+		public string Schema_addressCountry { get; set; }
+	}
+
+	public class PriceSpecification : GnossOCBase
+	{
+		public PriceSpecification() : base() { }
+
+		public PriceSpecification(SemanticEntityModel pSemCmsModel, LanguageEnum idiomaUsuario) : base()
+		{
+			mGNOSSID = pSemCmsModel.Entity.Uri;
+			mURL = pSemCmsModel.Properties.FirstOrDefault(p => p.PropertyValues.Any(prop => prop.DownloadUrl != null))?.FirstPropertyValue.DownloadUrl;
+			this.Schema_validFrom = GetDateValuePropertySemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/validFrom"));
+			this.Schema_price = GetNumberIntPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/price"));
+			this.Eschema_identifier = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/extended/identifier"));
+		}
+
+		public virtual string RdfType { get { return "https://schema.org/PriceSpecification"; } }
+		public virtual string RdfsLabel { get { return "https://schema.org/PriceSpecification"; } }
+
+		[LABEL(LanguageEnum.es, "Fecha del Valor")]
+		[LABEL(LanguageEnum.en, "Valuation dated")]
+		[RDFProperty("https://schema.org/validFrom")]
+		public DateTime? Schema_validFrom { get; set; }
+
+		[LABEL(LanguageEnum.es, "Valor")]
+		[LABEL(LanguageEnum.en, "Value")]
+		[RDFProperty("https://schema.org/price")]
+		public int? Schema_price { get; set; }
+
+		[LABEL(LanguageEnum.es, "ID")]
+		[RDFProperty("https://schema.org/extended/identifier")]
+		public string Eschema_identifier { get; set; }
+	}
+
+	public class SportsClub : GnossOCBase
+	{
+		public SportsClub() : base() { }
+
+		public SportsClub(SemanticResourceModel pSemCmsModel, LanguageEnum idiomaUsuario) : base()
+		{
+			GNOSSID = pSemCmsModel.RootEntities[0].Entity.Uri;
+			Schema_parentOrganization = new List<SportsTeam>();
+			SemanticPropertyModel propSchema_parentOrganization = pSemCmsModel.GetPropertyByPath("https://schema.org/parentOrganization");
+			if (propSchema_parentOrganization != null && propSchema_parentOrganization.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_parentOrganization.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						SportsTeam schema_parentOrganization = new SportsTeam(propValue.RelatedEntity, idiomaUsuario);
+						Schema_parentOrganization.Add(schema_parentOrganization);
+					}
+				}
+			}
+			Schema_location = new List<PostalAddress>();
+			SemanticPropertyModel propSchema_location = pSemCmsModel.GetPropertyByPath("https://schema.org/location");
+			if (propSchema_location != null && propSchema_location.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_location.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						PostalAddress schema_location = new PostalAddress(propValue.RelatedEntity, idiomaUsuario);
+						Schema_location.Add(schema_location);
+					}
+				}
+			}
+			this.Eschema_league = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/extended/league"));
+			this.Schema_identifier = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/identifier"));
+			this.Schema_logo = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/logo"));
+			SemanticPropertyModel propSchema_award = pSemCmsModel.GetPropertyByPath("https://schema.org/award");
+			this.Schema_award = new List<string>();
+			if (propSchema_award != null && propSchema_award.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_award.PropertyValues)
+				{
+					this.Schema_award.Add(propValue.Value);
+				}
+			}
+			SemanticPropertyModel propSchema_alternateName = pSemCmsModel.GetPropertyByPath("https://schema.org/alternateName");
+			this.Schema_alternateName = new List<string>();
+			if (propSchema_alternateName != null && propSchema_alternateName.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_alternateName.PropertyValues)
+				{
+					this.Schema_alternateName.Add(propValue.Value);
+				}
+			}
+			this.Schema_description = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/description"));
+			this.Schema_foundingDate = GetDateValuePropertySemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/foundingDate"));
+			this.Schema_name = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/name"));
+		}
+
+		public SportsClub(SemanticEntityModel pSemCmsModel, LanguageEnum idiomaUsuario) : base()
+		{
+			mGNOSSID = pSemCmsModel.Entity.Uri;
+			mURL = pSemCmsModel.Properties.FirstOrDefault(p => p.PropertyValues.Any(prop => prop.DownloadUrl != null))?.FirstPropertyValue.DownloadUrl;
+			Schema_parentOrganization = new List<SportsTeam>();
+			SemanticPropertyModel propSchema_parentOrganization = pSemCmsModel.GetPropertyByPath("https://schema.org/parentOrganization");
+			if (propSchema_parentOrganization != null && propSchema_parentOrganization.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_parentOrganization.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						SportsTeam schema_parentOrganization = new SportsTeam(propValue.RelatedEntity, idiomaUsuario);
+						Schema_parentOrganization.Add(schema_parentOrganization);
+					}
+				}
+			}
+			Schema_location = new List<PostalAddress>();
+			SemanticPropertyModel propSchema_location = pSemCmsModel.GetPropertyByPath("https://schema.org/location");
+			if (propSchema_location != null && propSchema_location.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_location.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						PostalAddress schema_location = new PostalAddress(propValue.RelatedEntity, idiomaUsuario);
+						Schema_location.Add(schema_location);
+					}
+				}
+			}
+			this.Eschema_league = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/extended/league"));
+			this.Schema_identifier = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/identifier"));
+			this.Schema_logo = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/logo"));
+			SemanticPropertyModel propSchema_award = pSemCmsModel.GetPropertyByPath("https://schema.org/award");
+			this.Schema_award = new List<string>();
+			if (propSchema_award != null && propSchema_award.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_award.PropertyValues)
+				{
+					this.Schema_award.Add(propValue.Value);
+				}
+			}
+			SemanticPropertyModel propSchema_alternateName = pSemCmsModel.GetPropertyByPath("https://schema.org/alternateName");
+			this.Schema_alternateName = new List<string>();
+			if (propSchema_alternateName != null && propSchema_alternateName.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_alternateName.PropertyValues)
+				{
+					this.Schema_alternateName.Add(propValue.Value);
+				}
+			}
+			this.Schema_description = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/description"));
+			this.Schema_foundingDate = GetDateValuePropertySemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/foundingDate"));
+			this.Schema_name = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/name"));
+		}
+
+		public virtual string RdfType { get { return "https://schema.org/SportsClub"; } }
+		public virtual string RdfsLabel { get { return "https://schema.org/SportsClub"; } }
+		[LABEL(LanguageEnum.es, "Historial de Equipos")]
+		[LABEL(LanguageEnum.en, "Historic Teams")]
+		[RDFProperty("https://schema.org/parentOrganization")]
+		[MinLength(1)]
+		public List<SportsTeam> Schema_parentOrganization { get; set; }
+
+		[LABEL(LanguageEnum.es, "Ubicaciï¿½n")]
+		[LABEL(LanguageEnum.en, "Location")]
+		[RDFProperty("https://schema.org/location")]
+		public List<PostalAddress> Schema_location { get; set; }
+
+		[LABEL(LanguageEnum.es, "League")]
+		[LABEL(LanguageEnum.en, "League")]
+		[RDFProperty("https://schema.org/extended/league")]
+		public string Eschema_league { get; set; }
+
+		[LABEL(LanguageEnum.es, "Id")]
+		[RDFProperty("https://schema.org/identifier")]
+		public string Schema_identifier { get; set; }
+
+		[LABEL(LanguageEnum.es, "Logo")]
+		[RDFProperty("https://schema.org/logo")]
+		public string Schema_logo { get; set; }
+
+		[LABEL(LanguageEnum.es, "Palmarï¿½s")]
+		[LABEL(LanguageEnum.en, "Awards")]
+		[RDFProperty("https://schema.org/award")]
+		public List<string> Schema_award { get; set; }
+
+		[LABEL(LanguageEnum.es, "Alias")]
+		[LABEL(LanguageEnum.en, "Also Known As (AKA)")]
+		[RDFProperty("https://schema.org/alternateName")]
+		public List<string> Schema_alternateName { get; set; }
+
+		[LABEL(LanguageEnum.es, "Historia del Club")]
+		[LABEL(LanguageEnum.en, "Club's History")]
+		[RDFProperty("https://schema.org/description")]
+		public string Schema_description { get; set; }
+
+		[LABEL(LanguageEnum.es, "Fecha Fundaciï¿½n del Club")]
+		[LABEL(LanguageEnum.en, "Club's Founding Date")]
+		[RDFProperty("https://schema.org/foundingDate")]
+		public DateTime? Schema_foundingDate { get; set; }
+
+		[LABEL(LanguageEnum.en, "Name")]
+		[LABEL(LanguageEnum.es, "Nombre")]
+		[RDFProperty("https://schema.org/name")]
+		public string Schema_name { get; set; }
+	}
+
+	public class SportsTeam : GnossOCBase
+	{
+		public SportsTeam() : base() { }
+
+		public SportsTeam(SemanticEntityModel pSemCmsModel, LanguageEnum idiomaUsuario) : base()
+		{
+			mGNOSSID = pSemCmsModel.Entity.Uri;
+			mURL = pSemCmsModel.Properties.FirstOrDefault(p => p.PropertyValues.Any(prop => prop.DownloadUrl != null))?.FirstPropertyValue.DownloadUrl;
+			SemanticPropertyModel propEschema_season = pSemCmsModel.GetPropertyByPath("https://schema.org/extended/season");
+			if (propEschema_season != null && propEschema_season.PropertyValues.Count > 0 && propEschema_season.PropertyValues[0].RelatedEntity != null)
+			{
+				Eschema_season = new Thing(propEschema_season.PropertyValues[0].RelatedEntity, idiomaUsuario);
+			}
+			Schema_coach = new List<Person>();
+			SemanticPropertyModel propSchema_coach = pSemCmsModel.GetPropertyByPath("https://schema.org/coach");
+			if (propSchema_coach != null && propSchema_coach.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_coach.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						Person schema_coach = new Person(propValue.RelatedEntity, idiomaUsuario);
+						Schema_coach.Add(schema_coach);
+					}
+				}
+			}
+			Schema_athlete = new List<Person>();
+			SemanticPropertyModel propSchema_athlete = pSemCmsModel.GetPropertyByPath("https://schema.org/athlete");
+			if (propSchema_athlete != null && propSchema_athlete.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSchema_athlete.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						Person schema_athlete = new Person(propValue.RelatedEntity, idiomaUsuario);
+						Schema_athlete.Add(schema_athlete);
+					}
+				}
+			}
+			this.Eschema_identifier = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/extended/identifier"));
+		}
+
+		public virtual string RdfType { get { return "https://schema.org/SportsTeam"; } }
+		public virtual string RdfsLabel { get { return "https://schema.org/SportsTeam"; } }
+
+		[LABEL(LanguageEnum.en, "Season")]
+		[LABEL(LanguageEnum.es, "Temporada")]
+		[RDFProperty("https://schema.org/extended/season")]
+		public Thing Eschema_season { get; set; }
+		public string IdEschema_season { get; set; }
+
+		[LABEL(LanguageEnum.es, "Entrenador")]
+		[LABEL(LanguageEnum.en, "Coach")]
+		[RDFProperty("https://schema.org/coach")]
+		public List<Person> Schema_coach { get; set; }
+		public List<string> IdsSchema_coach { get; set; }
+
+		[LABEL(LanguageEnum.es, "Jugadores")]
+		[LABEL(LanguageEnum.en, "Players")]
+		[RDFProperty("https://schema.org/athlete")]
+		public List<Person> Schema_athlete { get; set; }
+		public List<string> IdsSchema_athlete { get; set; }
+
+		[RDFProperty("https://schema.org/extended/identifier")]
+		public string Eschema_identifier { get; set; }
+
+	}
+
+	public class Thing : GnossOCBase
+	{
+		public Thing(string pIdentificador)
+		{
+		}
+
+		public Thing(SemanticEntityModel pSemCmsModel, LanguageEnum idiomaUsuario) : base()
+		{
+			mGNOSSID = pSemCmsModel.Entity.Uri;
+			mURL = pSemCmsModel.Properties.FirstOrDefault(p => p.PropertyValues.Any(prop => prop.DownloadUrl != null))?.FirstPropertyValue.DownloadUrl;
+			this.Schema_name = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("https://schema.org/name"));
+		}
+
+		public virtual string RdfType { get { return "https://schema.org/Thing"; } }
+		public virtual string RdfsLabel { get { return "https://schema.org/Thing"; } }
+		public string Identificador { get; set; }
+		[LABEL(LanguageEnum.es, "https://schema.org/name")]
+		[RDFProperty("https://schema.org/name")]
+		public string Schema_name { get; set; }
+	}
+
+	public class Collection : GnossOCBase
+	{
+		public Collection(string pIdentificador) : base()
+		{
+			Identificador = pIdentificador;
+		}
+
+		public Collection(SemanticEntityModel pSemCmsModel, LanguageEnum idiomaUsuario) : base()
+		{
+			mGNOSSID = pSemCmsModel.Entity.Uri;
+			mURL = pSemCmsModel.Properties.FirstOrDefault(p => p.PropertyValues.Any(prop => prop.DownloadUrl != null))?.FirstPropertyValue.DownloadUrl;
+			Skos2_member = new List<Concept>();
+			SemanticPropertyModel propSkos2_member = pSemCmsModel.GetPropertyByPath("http://www.w3.org/2008/05/skos#member");
+			if (propSkos2_member != null && propSkos2_member.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSkos2_member.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						Concept skos2_member = new Concept(propValue.RelatedEntity, idiomaUsuario);
+						Skos2_member.Add(skos2_member);
+					}
+				}
+			}
+			this.Dc_source = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("http://purl.org/dc/elements/1.1/source"));
+			this.Skos2_scopeNote = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("http://www.w3.org/2008/05/skos#scopeNote"));
+		}
+
+		public virtual string RdfType { get { return "http://www.w3.org/2008/05/skos#Collection"; } }
+		public virtual string RdfsLabel { get { return "http://www.w3.org/2008/05/skos#Collection"; } }
+		public string Identificador { get; set; }
+		[LABEL(LanguageEnum.es, "http://www.w3.org/2008/05/skos#member")]
+		[RDFProperty("http://www.w3.org/2008/05/skos#member")]
+		public List<Concept> Skos2_member { get; set; }
+
+		[LABEL(LanguageEnum.es, "http://purl.org/dc/elements/1.1/source")]
+		[RDFProperty("http://purl.org/dc/elements/1.1/source")]
+		public string Dc_source { get; set; }
+
+		[LABEL(LanguageEnum.es, "http://www.w3.org/2008/05/skos#scopeNote")]
+		[RDFProperty("http://www.w3.org/2008/05/skos#scopeNote")]
+		public string Skos2_scopeNote { get; set; }
+	}
+
+	public class Concept : GnossOCBase
+	{
+		public Concept(string pIdentificador) : base()
+		{
+			Identificador = pIdentificador;
+		}
+
+		public Concept(SemanticEntityModel pSemCmsModel, LanguageEnum idiomaUsuario) : base()
+		{
+			mGNOSSID = pSemCmsModel.Entity.Uri;
+			mURL = pSemCmsModel.Properties.FirstOrDefault(p => p.PropertyValues.Any(prop => prop.DownloadUrl != null))?.FirstPropertyValue.DownloadUrl;
+			Skos2_related = new List<Concept>();
+			SemanticPropertyModel propSkos2_related = pSemCmsModel.GetPropertyByPath("http://www.w3.org/2008/05/skos#related");
+			if (propSkos2_related != null && propSkos2_related.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSkos2_related.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						Concept skos2_related = new Concept(propValue.RelatedEntity, idiomaUsuario);
+						Skos2_related.Add(skos2_related);
+					}
+				}
+			}
+			Skos2_broader = new List<Concept>();
+			SemanticPropertyModel propSkos2_broader = pSemCmsModel.GetPropertyByPath("http://www.w3.org/2008/05/skos#broader");
+			if (propSkos2_broader != null && propSkos2_broader.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSkos2_broader.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						Concept skos2_broader = new Concept(propValue.RelatedEntity, idiomaUsuario);
+						Skos2_broader.Add(skos2_broader);
+					}
+				}
+			}
+			Skos2_narrower = new List<Concept>();
+			SemanticPropertyModel propSkos2_narrower = pSemCmsModel.GetPropertyByPath("http://www.w3.org/2008/05/skos#narrower");
+			if (propSkos2_narrower != null && propSkos2_narrower.PropertyValues.Count > 0)
+			{
+				foreach (SemanticPropertyModel.PropertyValue propValue in propSkos2_narrower.PropertyValues)
+				{
+					if (propValue.RelatedEntity != null)
+					{
+						Concept skos2_narrower = new Concept(propValue.RelatedEntity, idiomaUsuario);
+						Skos2_narrower.Add(skos2_narrower);
+					}
+				}
+			}
+			this.Skos2_symbol = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("http://www.w3.org/2008/05/skos#symbol"));
+			this.Skos2_note = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("http://www.w3.org/2008/05/skos#note"));
+			this.Dc_identifier = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("http://purl.org/dc/elements/1.1/identifier"));
+			this.Skos2_prefLabel = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("http://www.w3.org/2008/05/skos#prefLabel"));
+			this.Dc_source = GetPropertyValueSemCms(pSemCmsModel.GetPropertyByPath("http://purl.org/dc/elements/1.1/source"));
+		}
+
+		public virtual string RdfType { get { return "http://www.w3.org/2008/05/skos#Concept"; } }
+		public virtual string RdfsLabel { get { return "http://www.w3.org/2008/05/skos#Concept"; } }
+		public string Identificador { get; set; }
+
+		[LABEL(LanguageEnum.es, "http://www.w3.org/2008/05/skos#related")]
+		[RDFProperty("http://www.w3.org/2008/05/skos#related")]
+		public List<Concept> Skos2_related { get; set; }
+
+		[LABEL(LanguageEnum.es, "http://www.w3.org/2008/05/skos#broader")]
+		[RDFProperty("http://www.w3.org/2008/05/skos#broader")]
+		public List<Concept> Skos2_broader { get; set; }
+
+		[LABEL(LanguageEnum.es, "http://www.w3.org/2008/05/skos#narrower")]
+		[RDFProperty("http://www.w3.org/2008/05/skos#narrower")]
+		public List<Concept> Skos2_narrower { get; set; }
+
+		[LABEL(LanguageEnum.es, "http://www.w3.org/2008/05/skos#symbol")]
+		[RDFProperty("http://www.w3.org/2008/05/skos#symbol")]
+		public string Skos2_symbol { get; set; }
+
+		[LABEL(LanguageEnum.es, "http://www.w3.org/2008/05/skos#note")]
+		[RDFProperty("http://www.w3.org/2008/05/skos#note")]
+		public string Skos2_note { get; set; }
+
+		[LABEL(LanguageEnum.es, "http://purl.org/dc/elements/1.1/identifier")]
+		[RDFProperty("http://purl.org/dc/elements/1.1/identifier")]
+		public string Dc_identifier { get; set; }
+
+		[LABEL(LanguageEnum.es, "http://www.w3.org/2008/05/skos#prefLabel")]
+		[RDFProperty("http://www.w3.org/2008/05/skos#prefLabel")]
+		public string Skos2_prefLabel { get; set; }
+
+		[LABEL(LanguageEnum.es, "http://purl.org/dc/elements/1.1/source")]
+		[RDFProperty("http://purl.org/dc/elements/1.1/source")]
+		public string Dc_source { get; set; }
+	}
+
+	public class RDFPropertyAttribute : Attribute
+	{
+		public RDFPropertyAttribute(string pRDFA)
+		{
+			mRDFA = pRDFA;
+		}
+		protected string mRDFA;
+		public string RDFProperty
+		{
+			get { return mRDFA; }
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.All, AllowMultiple = true)]
+	public class LABELAttribute : Attribute
+	{
+		private GnossOCBase.LanguageEnum IdiomaDefecto = GnossOCBase.LanguageEnum.es;
+		private GnossOCBase.LanguageEnum midioma;
+		private string mlabel;
+		public LABELAttribute(GnossOCBase.LanguageEnum idioma, string label)
+		{
+			mlabel = label;
+			midioma = idioma;
+		}
+		public string LABEL(GnossOCBase.LanguageEnum pLang)
+		{
+			if (midioma.Equals(pLang))
+			{
+				return mlabel;
+			}
+			return "";
+		}
+	}
+	public class GnossOCBase
+	{
+		public enum LanguageEnum
+		{
+			es,
+			en,
+		}
+		// internal List<OntologyEntity> entList = new List<OntologyEntity>();
+		// internal List<OntologyProperty> propList = new List<OntologyProperty>();
+		// internal List<OntologyProperty> imagePropList = new List<OntologyProperty>();
+		internal List<string> prefList = new List<string>();
+		internal string mGNOSSID;
+		internal string mURL;
+		internal Guid resourceID;
+		internal Guid articleID;
+		private static List<string> NoEnIdiomas = new List<string> { "Nï¿½o", "Non", "Ez", "Nein", "No" };
+		public List<string> tagList = new List<string>();
+		public GnossOCBase()
+		{
+			prefList.Add("xmlns:schema=\"http://schema.org/\"");
+			prefList.Add("xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"");
+			prefList.Add("xmlns:xsd=\"http://www.w3.org/2001/XMLSchema#\"");
+			prefList.Add("xmlns:rdfs=\"http://www.w3.org/2000/01/rdf-schema#\"");
+			prefList.Add("xmlns:owl=\"http://www.w3.org/2002/07/owl#\"");
+
+			this.resourceID = Guid.NewGuid();
+			this.articleID = Guid.NewGuid();
+		}
+
+		public string GNOSSID
+		{
+			get { return mGNOSSID; }
+			set
+			{
+				this.mGNOSSID = value;
+				var GnossIDSplit = this.mGNOSSID.Split('_');
+				Guid nuevoResource = Guid.Empty;
+				Guid nuevoArticle = Guid.Empty;
+				if (GnossIDSplit.Length > 2)
+				{
+					nuevoResource = Guid.Parse(GnossIDSplit[GnossIDSplit.Count() - 2]);
+					nuevoArticle = Guid.Parse(GnossIDSplit.Last());
+				}
+				if (!this.resourceID.Equals(nuevoResource))
+				{
+					this.resourceID = nuevoResource;
+				}
+				if (!this.ArticleID.Equals(nuevoArticle))
+				{
+					this.articleID = nuevoArticle;
+				}
+			}
+		}
+		public string URL
+		{
+			get { return mURL; }
+		}
+
+		public Guid ResourceID
+		{
+			get { return resourceID; }
+			set
+			{
+				this.resourceID = value;
+				string primeraParte = this.mGNOSSID.Substring(0, this.mGNOSSID.LastIndexOf('/') + 1);
+				string antiguoGuid = this.mGNOSSID.Substring(this.mGNOSSID.LastIndexOf('/') + 1, this.mGNOSSID.LastIndexOf('_'));
+				string ultimaParte = this.mGNOSSID.Substring(this.mGNOSSID.LastIndexOf('_') + 1);
+				if (!antiguoGuid.Equals(this.resourceID.ToString()))
+				{
+					this.mGNOSSID = $"{primeraParte}{this.resourceID.ToString()}{ultimaParte}";
+				}
+			}
+		}
+
+		public Guid ArticleID
+		{
+			get { return articleID; }
+			set
+			{
+				this.articleID = value;
+				string primeraParte = this.mGNOSSID.Substring(0, this.mGNOSSID.LastIndexOf('_') + 1);
+				string antiguoGuid = this.mGNOSSID.Substring(this.mGNOSSID.LastIndexOf('_') + 1);
+				if (!antiguoGuid.Equals(this.articleID.ToString()))
+				{
+					this.mGNOSSID = $"{primeraParte}{this.articleID.ToString()}";
+				}
+			}
+		}
+
+		public static string GetPropertyValueSemCms(SemanticPropertyModel pProperty)
+		{
+			if (pProperty != null && pProperty.PropertyValues.Count > 0)
+			{
+				return pProperty.PropertyValues[0].Value;
+			}
+			return "";
+		}
+
+		public static int? GetNumberIntPropertyValueSemCms(SemanticPropertyModel pProperty)
+		{
+			if (pProperty != null && pProperty.PropertyValues.Count > 0 && !string.IsNullOrEmpty(pProperty.PropertyValues[0].Value))
+			{
+				return int.Parse(pProperty.PropertyValues[0].Value);
+			}
+			return 0;
+		}
+
+		public static int? GetNumberIntPropertyMultipleValueSemCms(SemanticPropertyModel.PropertyValue pProperty)
+		{
+			if (pProperty != null && !string.IsNullOrEmpty(pProperty.Value))
+			{
+				return int.Parse(pProperty.Value);
+			}
+			return 0;
+		}
+
+		public static float? GetNumberFloatPropertyValueSemCms(SemanticPropertyModel pProperty)
+		{
+			if (pProperty != null && pProperty.PropertyValues.Count > 0 && !string.IsNullOrEmpty(pProperty.PropertyValues[0].Value))
+			{
+				return float.Parse(pProperty.PropertyValues[0].Value.Replace('.', ','));
+			}
+			return 0;
+		}
+
+		public static float? GetNumberFloatPropertyValueSemCms(string pProperty)
+		{
+			if (!string.IsNullOrEmpty(pProperty))
+			{
+				return float.Parse(pProperty.Replace('.', ','));
+			}
+			return 0;
+		}
+
+		public static DateTime? GetDateValuePropertySemCms(SemanticPropertyModel pProperty)
+		{
+			string stringDate = GetPropertyValueSemCms(pProperty);
+			if (!string.IsNullOrEmpty(stringDate))
+			{
+				int year = 0;
+				int month = 0;
+				int day = 0;
+				if (stringDate.Contains('/'))
+				{
+					day = int.Parse(stringDate.Split('/')[0]);
+					month = int.Parse(stringDate.Split('/')[1]);
+					year = int.Parse(stringDate.Split('/')[2].Split(' ')[0]);
+				}
+				else
+				{
+					year = int.Parse(stringDate.Substring(0, 4));
+					month = int.Parse(stringDate.Substring(4, 2));
+					day = int.Parse(stringDate.Substring(6, 2));
+				}
+				if (stringDate.Length == 14)
+				{
+					if (month == 0 || day == 0)
+					{
+						return new DateTime(year);
+					}
+					else
+					{
+						int hour = int.Parse(stringDate.Substring(8, 2));
+						int minute = int.Parse(stringDate.Substring(10, 2));
+						int second = int.Parse(stringDate.Substring(12, 2));
+						return new DateTime(year, month, day, hour, minute, second);
+					}
+				}
+				else
+				{
+					return new DateTime(year, month, day);
+				}
+			}
+			return null;
+		}
+
+		public static bool GetBooleanPropertyValueSemCms(SemanticPropertyModel pProperty)
+		{
+			bool resultado = false;
+			if (pProperty != null && pProperty.PropertyValues.Count > 0 && !string.IsNullOrEmpty(pProperty.PropertyValues[0].Value))
+			{
+				if (!bool.TryParse(pProperty.PropertyValues[0].Value, out resultado))
+				{
+					resultado = !NoEnIdiomas.Contains(pProperty.PropertyValues[0].Value);
+				}
+			}
+			return resultado;
+		}
+
+
+
+		internal string GetExtension(string file)
+		{
+			if (!string.IsNullOrEmpty(file))
+			{
+				return file.Substring(file.LastIndexOf('.'));
+			}
+			return string.Empty;
+		}
+
+
+		public string GetPropertyURI(string nombrePropiedad)
+		{
+			Type type = this.GetType();
+			PropertyInfo mInfo = type.GetProperty(nombrePropiedad);
+			if (mInfo != null)
+			{
+				Attribute attr = Attribute.GetCustomAttribute(mInfo, typeof(RDFPropertyAttribute));
+				if (attr != null)
+				{
+					return ((RDFPropertyAttribute)attr).RDFProperty;
+				}
+			}
+			return "";
+		}
+
+
+
+		protected string GenerarTextoSinSaltoDeLinea(string pTexto)
+		{
+			return pTexto.Replace("\r\n", " ").Replace("\n", " ").Replace("\r", " ").Replace("\\", "\\\\").Replace("\"", "\\\"");
+		}
+
+		protected void AgregarTripleALista(string pSujeto, string pPredicado, string pObjeto, List<string> pLista, string pDatosExtra)
+		{
+			if (!string.IsNullOrEmpty(pObjeto) && !pObjeto.Equals("\"\"") && !pObjeto.Equals("<>"))
+			{
+				pLista.Add($"<{pSujeto}> <{pPredicado}> {pObjeto}{pDatosExtra}");
+			}
+		}
+
+		// protected List<string> ObtenerStringDePropiedad(object propiedad)
+		// {
+		// 	List<string> lista = new List<string>();
+		// 	if (propiedad is IList)
+		// 	{
+		// 		foreach (string item in (IList)propiedad)
+		// 		{
+		// 			lista.Add(item);
+		// 		}
+		// 	}
+		// 	else if (propiedad is IDictionary)
+		// 	{
+		// 		foreach (object key in ((IDictionary)propiedad).Keys)
+		// 		{
+		// 			if (((IDictionary)propiedad)[key] is IList)
+		// 			{
+		// 				List<string> listaValores = (List<string>)((IDictionary)propiedad)[key];
+		// 				foreach(string valor in listaValores)
+		// 				{
+		// 					lista.Add(valor);
+		// 				}
+		// 			}
+		// 			else
+		// 			{
+		// 			lista.Add((string)((IDictionary)propiedad)[key]);
+		// 			}
+		// 		}
+		// 	}
+		// 	else if (propiedad is string)
+		// 	{
+		// 		lista.Add((string)propiedad);
+		// 	}
+		// 	return lista;
+		// }
+
+		// protected List<object> ObtenerObjetosDePropiedad(object propiedad)
+		// {
+		// 	List<object> lista = new List<object>();
+		// 	if(propiedad is IList)
+		// 	{
+		// 		foreach (object item in (IList)propiedad)
+		// 		{
+		// 			lista.Add(item);
+		// 		}
+		// 	}
+		// 	else
+		// 	{
+		// 		lista.Add(propiedad);
+		// 	}
+		// 	return lista;
+		// }
+
+		protected void AgregarTags(List<string> pListaTriples)
+		{
+			foreach (string tag in tagList)
+			{
+				AgregarTripleALista($"http://gnoss/{ResourceID.ToString().ToUpper()}", "http://rdfs.org/sioc/types#Tag", tag.ToLower(), pListaTriples, " . ");
+			}
+		}
+
+
+		public string GetLabel(string nombrePropiedad, GnossOCBase.LanguageEnum pLang)
+		{
+			Type type = this.GetType();
+			PropertyInfo mInfo = type.GetProperty(nombrePropiedad);
+
+			if (mInfo != null)
+			{
+				Attribute[] attr = Attribute.GetCustomAttributes(mInfo, typeof(LABELAttribute));
+				{
+					foreach (Attribute atributo in attr)
+					{
+						if (atributo != null)
+						{
+							if (!((LABELAttribute)atributo).LABEL(pLang).Equals(""))
+							{
+								return ((LABELAttribute)atributo).LABEL(pLang);
+							}
+						}
+					}
+				}
+			}
+
+			return "";
+		}
+		// public virtual List<string> ToOntologyGnossTriples(ResourceApi pResourceApi){throw new NotImplementedException();}
+
+		// public virtual List<string> ToSearchGraphTriples(ResourceApi pResourceApi){throw new NotImplementedException();}
+
+		// public virtual KeyValuePair<Guid, string> ToAcidData(ResourceApi resourceAPI){throw new NotImplementedException();}
+
+		// public virtual string GetURI(ResourceApi resourceAPI){throw new NotImplementedException();}
+
+		public int GetID() { return 0; }
+	}
+
+}
